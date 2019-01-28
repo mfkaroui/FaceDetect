@@ -1,9 +1,10 @@
-import tensorflow as tf
+#import tensorflow as tf
 import numpy as np
 import os
 import psutil as psu
 from multiprocessing import pool as mpp
-import PIL
+from PIL import Image
+from dataGenerator import DataGenerator
 
 imagesPath = "Data/UTKFace"
 labelsPath = "Data"
@@ -23,7 +24,15 @@ ageClassLabels = [(0, 5), (6, 11), (12, 17),
                   (108, 113), (114, 119)]
 
 def readImage(path):
-    return np.asarray(PIL.Image.open(path))
+    img = Image.open(path)
+    returnImage = np.asarray(img) / 255
+    img.close()
+    return returnImage
+
+def oneHotEncode(i, n):
+    returnArray = np.zeros(shape=(n,), dtype=float)
+    returnArray[i] = 1
+    return returnArray
 
 if __name__ == "__main__":
     print("Face Detect\nAuthor: Mohamed Fateh Karoui")
@@ -51,17 +60,13 @@ if __name__ == "__main__":
                         except:
                             pass
     print("Found " + str(len(labels)) + " labels.")
-
-    images = []
-    for path in list(labels.keys()):
-        images.append(readImage(path))
-
-    images = np.array(images, dtype=float)
-
-    print("Loaded Images. Shape: " + str(images.shape))
-
-    inputImages = images / 255
-    print("Normalized Input Image Data")
-
-    outputAges = np.array([label[0] for label in list(labels.values())], dtype=int)
     
+    outputAges = []
+    for label in list(labels.values()):
+        for i in range(len(ageClassLabels)):
+            if label[0] >= ageClassLabels[i][0] and label[0] <= ageClassLabels[i][1]:
+                outputAges.append(oneHotEncode(i, len(ageClassLabels)))
+                break
+    outputAges = np.array(outputAges, dtype=float)
+    print("Binned Ages into classes. Shape: " + str(outputAges.shape))
+    data = DataGenerator(None, outputAges)
