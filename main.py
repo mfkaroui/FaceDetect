@@ -3,7 +3,6 @@ import numpy as np
 import os
 import psutil as psu
 from multiprocessing import pool as mpp
-from PIL import Image
 from dataGenerator import DataGenerator
 
 imagesPath = "Data/UTKFace"
@@ -22,12 +21,6 @@ ageClassLabels = [(0, 5), (6, 11), (12, 17),
                   (72, 77), (78, 83), (84, 89),
                   (90, 95), (96, 101), (102, 107),
                   (108, 113), (114, 119)]
-
-def readImage(path):
-    img = Image.open(path)
-    returnImage = np.asarray(img) / 255
-    img.close()
-    return returnImage
 
 def oneHotEncode(i, n):
     returnArray = np.zeros(shape=(n,), dtype=float)
@@ -68,6 +61,10 @@ if __name__ == "__main__":
                 outputAges.append(oneHotEncode(i, len(ageClassLabels)))
                 break
     outputAges = np.array(outputAges, dtype=float)
+
     print("Binned Ages into classes. Shape: " + str(outputAges.shape))
+
     data = DataGenerator(np.array(list(labels.keys())), outputAges)
-    data.sampleData()
+    img, lbl = data[0]
+
+    print("Done")
