@@ -6,11 +6,11 @@ class EdgeFeatures(tf.keras.layers.Layer):
         self.size = size
         self.variation = variation
         self.thickness = thickness
-        super(LowLevelFeatures, self).__init__(**kwargs)
+        super(EdgeFeatures, self).__init__(**kwargs)
 
     def build(self, input_shape):
         self.size = (int(input_shape[1] * self.size), int(input_shape[2] * self.size))
-        super(LowLevelFeatures, self).build(input_shape)
+        super(EdgeFeatures, self).build(input_shape)
 
     def call(self, x):
         pass
