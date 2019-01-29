@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import random
-
+from PIL import Image
 
 '''
 The data generator will be responsible for subdividing the input data into training sets and test sets
@@ -31,26 +31,38 @@ class DataGenerator(tf.keras.utils.Sequence):
             self.data[-1][1] = self.data[-1][1][indexes]
         #figure out how many samples to choose per epoch per class
         self.maxSampleSize = np.min(self.classCounts)
-        
+        self.batchSize = int(np.floor((self.maxSampleSize * self.nclasses) / self.batchCount))
+        #sample the data
+        self.sampleData()
+
     def sampleData(self):
-        images = []
-        labels = []
+        self.images = []
+        self.labels = []
         #iterate through each class
         for i in range(self.nclasses):
             #select from each class randomly
             indexes = random.sample(range(self.data[i][0].shape[0]), self.maxSampleSize)
-            images.extend(self.data[i][0][indexes])
-            labels.extend(self.data[i][1][indexes])
-        images = np.stack(images, axis=0)
-        labels = np.stack(labels, axis=0)
+            self.images.extend(self.data[i][0][indexes])
+            self.labels.extend(self.data[i][1][indexes])
+        self.images = np.stack(self.images, axis=0)
+        self.labels = np.stack(self.labels, axis=0)
         #final shuffle
         indexes = random.sample(range(self.maxSampleSize * self.nclasses), self.maxSampleSize * self.nclasses)
-        images = images[indexes]
-        labels = labels[indexes]
-        return images, labels
+        self.images = self.images[indexes]
+        self.labels = self.labels[indexes]
     
+    def on_epoch_end(self):
+        #when we finish an epoch we will generate a new batch
+        self.sampleData()
+
     def __len__(self):
         return self.batchCount
     
     def __getitem__(self, index):
-        return self.sampleData()
+        s = slice(index * self.batchSize, (index + 1) * self.batchSize)
+        images = []
+        for imgPath in self.images[s]:
+            img = Image.open(imgPath)
+            images.append(np.asarray(img) / 255)
+            img.close()
+        return np.stack(images, axis=0), self.labels[s]
