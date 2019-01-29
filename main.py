@@ -69,4 +69,5 @@ if __name__ == "__main__":
                 break
     outputAges = np.array(outputAges, dtype=float)
     print("Binned Ages into classes. Shape: " + str(outputAges.shape))
-    data = DataGenerator(None, outputAges)
+    data = DataGenerator(np.array(list(labels.keys())), outputAges)
+    data.sampleData()
