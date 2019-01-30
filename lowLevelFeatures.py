@@ -57,7 +57,7 @@ def Edge2DInitializer(sampleCount, variance):
         tensor = []
         for i in range(totalEdges):
             tensor.append(StochasticLine(i * angleDelta, sampleCount, variance, edgeShape[1], edgeShape[0], edgeShape[2]))
-        tensor = tf.keras.backend.constant(np.stack(tensor, axis=-1), dtype)
+        tensor = tf.keras.backend.constant(np.stack(tensor, axis=-1) * 100, dtype)
         return tensor
     return initializer
 #A Conv2D layer where the filters are preinitialized as edge features
@@ -71,10 +71,10 @@ class EdgeFeatures2D(tf.keras.layers.Layer):
         super(EdgeFeatures2D, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        input_channels = input_shape[-1]
+        input_channels = int(input_shape[-1])
         kernel_shape = self.filterSize + (input_channels, self.filters)
         bias_shape = (self.filters,)
-        self.kernel = self.add_weight(name="kernel", shape=kernel_shape, initializer=Edge2DInitializer(self.filterSampleCount, self.filterVariance))
+        self.kernel = self.add_weight(name="kernel", shape=kernel_shape, initializer=tf.keras.initializers.lecun_uniform())#=Edge2DInitializer(self.filterSampleCount, self.filterVariance))
         self.bias = self.add_weight(name="bias", shape=bias_shape, initializer=tf.keras.initializers.lecun_uniform())
         super(EdgeFeatures2D, self).build(input_shape)
 
