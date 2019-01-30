@@ -50,7 +50,7 @@ def StochasticLine(angle, sampleCount, variance, width, height, depth):
     return result# return the final tensor
 
 def Edge2DInitializer(sampleCount, variance):
-    def initializer(shape, dtype=None):
+    def initializer(shape, dtype=None, partition_info=None):
         totalEdges = shape[-1]
         edgeShape = shape[:-1]
         angleDelta = 180 / float(totalEdges)
@@ -75,7 +75,7 @@ class EdgeFeatures2D(tf.keras.layers.Layer):
         kernel_shape = self.filterSize + (input_channels, self.filters)
         bias_shape = (self.filters,)
         self.kernel = self.add_weight(name="kernel", shape=kernel_shape, initializer=Edge2DInitializer(self.filterSampleCount, self.filterVariance))
-        self.bias = self.add_weight(name="bias", shape=bias_shape, initializer=tf.keras.initializers.Zeros)
+        self.bias = self.add_weight(name="bias", shape=bias_shape, initializer=tf.keras.initializers.lecun_uniform())
         super(EdgeFeatures2D, self).build(input_shape)
 
     def call(self, x):
