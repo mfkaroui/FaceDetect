@@ -8,6 +8,7 @@ from lowLevelFeatures import EdgeFeatures2D
 
 imagesPath = "Data/UTKFace"
 labelsPath = "Data"
+validationSplit = 0.5
 
 workingDir = os.getcwd()
 imagesPath = os.path.join(workingDir, imagesPath)
@@ -55,7 +56,7 @@ if __name__ == "__main__":
                         except:
                             pass
     print("Found " + str(len(labels)) + " labels.")
-
+    splitIndex = int(len(labels) * validationSplit)
     outputAges = []
     for label in list(labels.values()):
         for i in range(len(ageClassLabels)):
@@ -65,8 +66,11 @@ if __name__ == "__main__":
     outputAges = np.array(outputAges, dtype=float)
 
     print("Binned Ages into classes. Shape: " + str(outputAges.shape))
+    
+    imageIDs = np.array(list(labels.keys()))
 
-    data = DataGenerator(np.array(list(labels.keys())), outputAges, 5)
+    trainData = DataGenerator(imageIDs[:splitIndex], outputAges[:splitIndex], 5)
+    testData = DataGenerator(imageIDs[:splitIndex], outputAges[:splitIndex], 5)
 
     inputLayer = tf.keras.layers.Input(shape=(200,200,3))
     hiddenLayer_1 = EdgeFeatures2D(20, (5,5), 0.8, 100, tf.keras.activations.relu)(inputLayer)
@@ -77,5 +81,5 @@ if __name__ == "__main__":
 
     model = tf.keras.models.Model(inputs=inputLayer, outputs=hiddenLayer_5)
     model.compile(tf.keras.optimizers.Adam(1e-4),loss=tf.keras.losses.categorical_crossentropy, metrics=["accuracy"])
-    model.fit_generator(generator=data, epochs=10000)
+    model.fit_generator(generator=trainData, validation_data=testData, epochs=10000)
     print("Done")
