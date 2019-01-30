@@ -3,7 +3,7 @@ import numpy as np
 
 #angle = angle of line in degrees
 #sampleCount = number of points to sample for each slice of the line
-#variance = correspondes to the thickness of the line
+#variance = correspondes to the thickness of the line usually (2 * variance) + 1
 #width = width of the tensor (columns)
 #height = height of the tensor (rows)
 #depth = depth of the tensor (number of slices)
@@ -49,20 +49,37 @@ def StochasticLine(angle, sampleCount, variance, width, height, depth):
         mean -= delta
     return result# return the final tensor
 
-class EdgeFeatures(tf.keras.layers.Layer):
-    def __init__(self, count, size, variation, sampleCount, **kwargs):
-        self.count = count
-        self.size = size
-        self.variation = variation
-        self.sampleCount = sampleCount
-        super(EdgeFeatures, self).__init__(**kwargs)
+def Edge2DInitializer(sampleCount, variance):
+    def initializer(shape, dtype=None):
+        totalEdges = shape[-1]
+        edgeShape = shape[:-1]
+        angleDelta = 180 / float(totalEdges)
+        tensor = []
+        for i in range(totalEdges):
+            tensor.append(StochasticLine(i * angleDelta, sampleCount, variance, edgeShape[1], edgeShape[0], edgeShape[2]))
+        tensor = tf.keras.backend.constant(np.stack(tensor, axis=-1), dtype)
+        return tensor
+    return initializer
+#A Conv2D layer where the filters are preinitialized as edge features
+class EdgeFeatures2D(tf.keras.layers.Layer):
+    def __init__(self, filters, filterSize, filterVariance, filterSampleCount, activation, **kwargs):
+        self.filters = filters
+        self.filterSize = filterSize
+        self.filterVariance = filterVariance
+        self.filterSampleCount = filterSampleCount
+        self.activation = activation
+        super(EdgeFeatures2D, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.size = (int(input_shape[1] * self.size), int(input_shape[2] * self.size))
-        super(EdgeFeatures, self).build(input_shape)
+        input_channels = input_shape[-1]
+        kernel_shape = self.filterSize + (input_channels, self.filters)
+        bias_shape = (self.filters,)
+        self.kernel = self.add_weight(name="kernel", shape=kernel_shape, initializer=Edge2DInitializer(self.filterSampleCount, self.filterVariance))
+        self.bias = self.add_weight(name="bias", shape=bias_shape, initializer=tf.keras.initializers.Zeros)
+        super(EdgeFeatures2D, self).build(input_shape)
 
     def call(self, x):
-        pass
+        return self.activation(tf.keras.backend.bias_add(tf.keras.backend.conv2d(x, self.kernel, data_format='channels_last'), self.bias, data_format='channels_last'))
 
     def compute_output_shape(self, input_shape):
-        pass
+        return input_shape[:-1] + (self.filters,)
