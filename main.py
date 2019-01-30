@@ -5,7 +5,6 @@ import psutil as psu
 import functools
 from multiprocessing import pool as mpp
 from dataGenerator import DataGenerator
-from lowLevelFeatures import EdgeFeatures2D
 
 imagesPath = "Data/UTKFace"
 labelsPath = "Data"
@@ -69,14 +68,17 @@ if __name__ == "__main__":
 
     trainData, testData = DataGenerator(np.array(list(labels.keys())), outputAges, 100).split(validationSplit)
 
+    LayerTemplate = functools.partial(tf.keras.layers.Conv2D, bias_initializer=tf.keras.initializers.lecun_normal(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.relu)
+    LayerTemplate.__name__ = 'LayerTemplate'
+
     inputLayer = tf.keras.layers.Input(shape=(200,200,3))
-    hiddenLayer_1 = EdgeFeatures2D(50, (5,5), 0.8, 100, tf.keras.activations.relu)(inputLayer)
+    hiddenLayer_1 = LayerTemplate(filters=50, kernel_size=(5,5))(inputLayer)
     dropout_1 = tf.keras.layers.SpatialDropout2D(0.4, "channels_last")(hiddenLayer_1)
-    hiddenLayer_2 = EdgeFeatures2D(25, (11,11), 1.6, 100, tf.keras.activations.relu)(dropout_1)
+    hiddenLayer_2 = LayerTemplate(filters=25, kernel_size=(11,11))(dropout_1)
     dropout_2 = tf.keras.layers.SpatialDropout2D(0.1, "channels_last")(hiddenLayer_2)
-    hiddenLayer_3 = EdgeFeatures2D(13, (23,23), 3.2, 100, tf.keras.activations.relu)(dropout_2)
+    hiddenLayer_3 = LayerTemplate(filters=13, kernel_size=(23,23))(dropout_2)
     dropout_3 = tf.keras.layers.SpatialDropout2D(0.25, "channels_last")(hiddenLayer_3)
-    hiddenLayer_4 = EdgeFeatures2D(7, (47,47), 6.4, 100, tf.keras.activations.relu)(dropout_3)
+    hiddenLayer_4 = LayerTemplate(filters=7, kernel_size=(47,47))(dropout_3)
     dropout_4 = tf.keras.layers.SpatialDropout2D(0.0625, "channels_last")(hiddenLayer_4)
     hiddenLayer_5 = tf.keras.layers.Flatten()(dropout_4)
     hiddenLayer_6 = tf.keras.layers.Dense(units=outputAges.shape[1], activation=tf.keras.activations.softmax)(hiddenLayer_5)
