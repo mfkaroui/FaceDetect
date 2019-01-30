@@ -50,14 +50,14 @@ class DataGenerator(tf.keras.utils.Sequence):
         indexes = random.sample(range(self.maxSampleSize * self.nclasses), self.maxSampleSize * self.nclasses)
         self.images = self.images[indexes]
         self.labels = self.labels[indexes]
-    
+
     def on_epoch_end(self):
         #when we finish an epoch we will generate a new batch
         self.sampleData()
 
     def __len__(self):
         return self.batchCount
-    
+
     def __getitem__(self, index):
         s = slice(index * self.batchSize, (index + 1) * self.batchSize)
         images = []
@@ -79,4 +79,4 @@ class DataGenerator(tf.keras.utils.Sequence):
             images2.append(self.data[i][0][splitIndex:])
             labels1.append(self.data[i][1][:splitIndex])
             labels2.append(self.data[i][1][splitIndex:])
-        return DataGenerator(np.stack(images1, axis=0), np.stack(labels1, axis=0), self.batchCount), DataGenerator(np.stack(images2, axis=0), np.stack(labels2, axis=0), self.batchCount)
+        return DataGenerator(np.concatenate(images1, axis=0), np.concatenate(labels1, axis=0), self.batchCount), DataGenerator(np.concatenate(images2, axis=0), np.concatenate(labels2, axis=0), self.batchCount)
