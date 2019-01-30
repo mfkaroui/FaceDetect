@@ -66,3 +66,17 @@ class DataGenerator(tf.keras.utils.Sequence):
             images.append(np.asarray(img) / 255)
             img.close()
         return np.stack(images, axis=0), self.labels[s]
+
+    def split(self, ratio):
+        images1 = []
+        images2 = []
+
+        labels1 = []
+        labels2 = []
+        for i in range(self.nclasses):
+            splitIndex = int(self.classCounts[i] * ratio)
+            images1.append(self.data[i][0][:splitIndex])
+            images2.append(self.data[i][0][splitIndex:])
+            labels1.append(self.data[i][1][:splitIndex])
+            labels2.append(self.data[i][1][splitIndex:])
+        return DataGenerator(np.stack(images1, axis=0), np.stack(labels1, axis=0), self.batchCount), DataGenerator(np.stack(images2, axis=0), np.stack(labels2, axis=0), self.batchCount)
