@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import random
 
 #angle = angle of line in degrees
 #sampleCount = number of points to sample for each slice of the line
@@ -31,7 +32,7 @@ def StochasticLine(angle, sampleCount, variance, width, height, depth):
                 #clamp the position if it exceeds the boundaries of the matrix
                 current[0] = 0 if current[0] < 0 else height - 1 if current[0] >= height else int(current[0])
                 current[1] = 0 if current[1] < 0 else width - 1 if current[1] >= width else int(current[1])
-                result[current[0], current[1], d] += 1 / float(sampleCount * depth)
+                result[current[0], current[1], d] += random.normalvariate(0, 1 / float(sampleCount * depth))
         mean += delta
     #now draw the other side of the line
     mean = np.copy(center) - delta
@@ -45,7 +46,7 @@ def StochasticLine(angle, sampleCount, variance, width, height, depth):
                 #clamp the position if it exceeds the boundaries of the matrix
                 current[0] = 0 if current[0] < 0 else height - 1 if current[0] >= height else int(current[0])
                 current[1] = 0 if current[1] < 0 else width - 1 if current[1] >= width else int(current[1])
-                result[current[0], current[1], d] += 1 / float(sampleCount * depth)
+                result[current[0], current[1], d] += random.normalvariate(0, 1 / float(sampleCount * depth))
         mean -= delta
     return result# return the final tensor
 
@@ -57,7 +58,7 @@ def Edge2DInitializer(sampleCount, variance):
         tensor = []
         for i in range(totalEdges):
             tensor.append(StochasticLine(i * angleDelta, sampleCount, variance, edgeShape[1], edgeShape[0], edgeShape[2]))
-        tensor = tf.keras.backend.constant(np.stack(tensor, axis=-1) * 100, dtype)
+        tensor = tf.keras.backend.constant(np.stack(tensor, axis=-1), dtype)
         return tensor
     return initializer
 #A Conv2D layer where the filters are preinitialized as edge features
@@ -74,7 +75,7 @@ class EdgeFeatures2D(tf.keras.layers.Layer):
         input_channels = int(input_shape[-1])
         kernel_shape = self.filterSize + (input_channels, self.filters)
         bias_shape = (self.filters,)
-        self.kernel = self.add_weight(name="kernel", shape=kernel_shape, initializer=tf.keras.initializers.lecun_uniform())#=Edge2DInitializer(self.filterSampleCount, self.filterVariance))
+        self.kernel = self.add_weight(name="kernel", shape=kernel_shape, initializer=Edge2DInitializer(self.filterSampleCount, self.filterVariance))
         self.bias = self.add_weight(name="bias", shape=bias_shape, initializer=tf.keras.initializers.lecun_uniform())
         super(EdgeFeatures2D, self).build(input_shape)
 
