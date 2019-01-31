@@ -78,12 +78,14 @@ if __name__ == "__main__":
     dropout_2 = tf.keras.layers.SpatialDropout2D(0.1, "channels_last")(hiddenLayer_2)
     hiddenLayer_3 = LayerTemplate(filters=13, kernel_size=(23,23))(dropout_2)
     dropout_3 = tf.keras.layers.SpatialDropout2D(0.25, "channels_last")(hiddenLayer_3)
-    hiddenLayer_4 = LayerTemplate(filters=7, kernel_size=(47,47))(dropout_3)
+    hiddenLayer_4 = LayerTemplate(filters=13, kernel_size=(47,47))(dropout_3)
     dropout_4 = tf.keras.layers.SpatialDropout2D(0.0625, "channels_last")(hiddenLayer_4)
-    hiddenLayer_5 = tf.keras.layers.Flatten()(dropout_4)
-    hiddenLayer_6 = tf.keras.layers.Dense(units=outputAges.shape[1], activation=tf.keras.activations.softmax)(hiddenLayer_5)
+    hiddenLayer_5 = LayerTemplate(filters=13, kernel_size=(95,95))(dropout_4)
+    dropout_5 = tf.keras.layers.SpatialDropout2D(0.03125, "channels_last")(hiddenLayer_5)
+    hiddenLayer_6 = tf.keras.layers.Flatten()(dropout_5)
+    hiddenLayer_7 = tf.keras.layers.Dense(units=outputAges.shape[1], activation=tf.keras.activations.softmax)(hiddenLayer_6)
 
-    model = tf.keras.models.Model(inputs=inputLayer, outputs=hiddenLayer_6)
+    model = tf.keras.models.Model(inputs=inputLayer, outputs=hiddenLayer_7)
 
     top2_acc = functools.partial(tf.keras.metrics.top_k_categorical_accuracy, k=2)
     top2_acc.__name__ = 'top2_acc'
