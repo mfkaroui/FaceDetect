@@ -68,8 +68,14 @@ if __name__ == "__main__":
 
     trainData, testData = DataGenerator(np.array(list(labels.keys())), outputAges, 100).split(validationSplit)
 
-    LayerTemplate = functools.partial(tf.keras.layers.Conv2D, bias_initializer=tf.keras.initializers.lecun_normal(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.relu)
-    LayerTemplate.__name__ = 'LayerTemplate'
+    ConvTemplate = functools.partial(tf.keras.layers.Conv2D, bias_initializer=tf.keras.initializers.lecun_normal(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.relu)
+    ConvTemplate.__name__ = 'ConvTemplate'
+
+    def LayerTemplate(filters, kernel_size):
+        def Layer(x):
+            return tf.keras.layers.BatchNormalization()(ConvTemplate(filters=filters, kernel_size=kernel_size))
+        return Layer
+
 
     inputLayer = tf.keras.layers.Input(shape=(200,200,3))
     hiddenLayer_1 = LayerTemplate(filters=50, kernel_size=(5,5))(inputLayer)
