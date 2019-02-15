@@ -49,7 +49,17 @@ if __name__ == "__main__":
     TConvTemplate = functools.partial(tf.keras.layers.Conv2DTranspose, padding="same", data_format="channels_last", bias_initializer=tf.keras.initializers.Zeros(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.selu)
     TConvTemplate.__name__ = 'TConvTemplate'
     def skipStep(layer_1, layer_2):
-        return tf.keras.layers.Concatenate()([layer_1, layer_2])
+        layer1_shape = tf.keras.backend.int_shape(layer_1)
+        layer2_shape = tf.keras.backend.int_shape(layer_2)
+        if layer1_shape[-1] < layer2_shape[-1]:
+            expansionLayer = ConvTemplate(filters=layer2_shape[-1], kernel_size=(3,3))(layer_1)
+            sumLayer = tf.keras.layers.Add()([expansionLayer, layer_2])
+        else if layer1_shape[-1] > layer2_shape[-1]:
+            expansionLayer = ConvTemplate(filters=layer1_shape[-1], kernel_size=(3,3))(layer_2)
+            sumLayer = tf.keras.layers.Add()([layer_1, expansionLayer])
+        else:
+            sumLayer = tf.keras.layers.Add()([layer_1, layer_2])
+        return sumLayer
 
     layers = [tf.keras.layers.Input(shape=(inputShape[1], inputShape[0], 3))]
     dropoutRate = 0.0
