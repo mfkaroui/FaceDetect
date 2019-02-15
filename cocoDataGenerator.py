@@ -145,7 +145,7 @@ class DataGenerator(tf.keras.utils.Sequence):
                 self.labels.append(label)
             i = i + 1
         personWeight = (shape[0] * shape[1] * len(self.images)) / totalPersonPixels
-        self.classWeights = [personWeight, 1 / personWeight]
+        self.classWeights = tf.keras.backend.constant(np.array([personWeight, 1 / personWeight]))
         self.images = np.stack(self.images, axis=0)
         self.labels = np.stack(self.labels, axis=0)
          
@@ -160,7 +160,7 @@ class DataGenerator(tf.keras.utils.Sequence):
             self.validationGenerator.sampleData()
 
     def fit(self, model, epochs, callbacks=[]):
-        model.fit_generator(generator=self, validation_data=self.validationGenerator, class_weight=self.classWeights, epochs=epochs, callbacks=callbacks)
+        model.fit_generator(generator=self, validation_data=self.validationGenerator, epochs=epochs, callbacks=callbacks)
 
     def __len__(self):
         return self.batchCount
@@ -174,3 +174,9 @@ class DataGenerator(tf.keras.utils.Sequence):
         indexes = random.sample(range(self.images.shape[0]), self.images.shape[0])
         self.images = self.images[indexes]
         self.labels = self.labels[indexes]
+
+    def pixelwise_crossentropy(self):
+        def loss(y_true, y_pred):
+            y_pred = tf.clip_by_value(y_pred, tf.keras.backend.epsilon(), 1. - tf.keras.backend.epsilon())
+            return - tf.reduce_sum(tf.multiply(y_true * tf.keras.backend.log(y_pred), self.classWeights))
+        return loss
