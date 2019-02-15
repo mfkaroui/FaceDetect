@@ -42,17 +42,17 @@ if __name__ == "__main__":
             zip_ref.extractall(dataDir)
         print ("... done unzipping")
     print ("Will use annotations in " + annFile)
-    data = DataGenerator(annFile)
+    data = DataGenerator(annFile, 0.3, 500, 20)
 
-    ConvTemplate = functools.partial(tf.keras.layers.Conv2D, padding="same", data_format="channels_last", bias_initializer=tf.keras.initializers.lecun_normal(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.selu)
+    ConvTemplate = functools.partial(tf.keras.layers.Conv2D, padding="same", data_format="channels_last", bias_initializer=tf.keras.initializers.Zeros(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.selu)
     ConvTemplate.__name__ = 'ConvTemplate'
-    TConvTemplate = functools.partial(tf.keras.layers.Conv2DTranspose, padding="same", data_format="channels_last", bias_initializer=tf.keras.initializers.lecun_normal(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.selu)
+    TConvTemplate = functools.partial(tf.keras.layers.Conv2DTranspose, padding="same", data_format="channels_last", bias_initializer=tf.keras.initializers.Zeros(), kernel_initializer=tf.keras.initializers.lecun_normal(), activation=tf.keras.activations.selu)
     TConvTemplate.__name__ = 'TConvTemplate'
     def skipStep(layer_1, layer_2):
         return tf.keras.layers.Concatenate()([layer_1, layer_2])
 
     layers = [tf.keras.layers.Input(shape=(inputShape[1], inputShape[0], 3))]
-    dropoutRate = 0.4
+    dropoutRate = 0.0
     filterCount = 50
     kSize = 5
 
@@ -71,18 +71,21 @@ if __name__ == "__main__":
         layers.append(l)
         kSize = int(kSize * 2)
         pShape = tf.keras.backend.int_shape(l)
-        mSize = int(min(pShape[1], pShape[2]) / 2)
+        mSize = int(min(pShape[1], pShape[2]))
         kSize = kSize if kSize < mSize else mSize
         kSize = kSize - 1 if kSize % 2 == 0 else kSize
     #inverse operation with skipSteps
     for i in range(len(filters), 0, -1):
         l = TConvTemplate(filters=filters[i - 1], kernel_size=kernelSizes[i - 1], strides=(2,2))(layers[-1])
-        l = skipStep(l, layers[i - 1])
+        if i > 3:
+            l = skipStep(l, layers[i - 1])
         l = tf.keras.layers.SpatialDropout2D(min(dropoutRates[i - 1] * 2, 0.5), "channels_last")(l)
         layers.append(l)
-    classification = TConvTemplate(filters=2, kernel_size=(7,7), activation=tf.keras.activations.softmax)(layers[-1])
+    classification = ConvTemplate(filters=20, kernel_size=(3,3))(layers[-1])
+    classification = ConvTemplate(filters=20, kernel_size=(3,3))(classification)
+    classification = ConvTemplate(filters=2, kernel_size=(3,3), activation=tf.keras.activations.softmax)(classification)
     model = tf.keras.models.Model(inputs=layers[0], outputs=classification)
-    model.compile(tf.keras.optimizers.Adam(1e-6),loss=tf.keras.losses.categorical_crossentropy, metrics=["accuracy"])
+
 
     def pr(b, l):
         preview = []
@@ -99,6 +102,6 @@ if __name__ == "__main__":
     previewResults = tf.keras.callbacks.LambdaCallback(on_batch_begin=pr)
 
     for i in range(1000):
-        data.fit(model, 10, [previewResults])
+        model.compile(tf.keras.optimizers.Adam(1e-4),loss=data.pixelwise_crossentropy(), metrics=["accuracy"])
+        data.fit(model, 100, [previewResults])
         data.sampleData()
-        

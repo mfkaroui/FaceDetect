@@ -12,7 +12,7 @@ import zipfile
 import itertools
 import threading
 
-shape = (256,128)
+shape = (512,256)
 
 def getImg(url, result, index):
     global shape
@@ -53,7 +53,7 @@ It will subsample classes per batch to solve class imbalance issues.
 '''
 class DataGenerator(tf.keras.utils.Sequence):
     def __init__(self, annotationFile, validationSplit=0.3, samplesPerClass=50, batchCount=10, isValidation = False, validationPerson = None, validationBackground = None):
-        
+
         #store the samplesPerClass
         self.samplesPerClass = samplesPerClass
         self.batchCount = batchCount
@@ -66,7 +66,7 @@ class DataGenerator(tf.keras.utils.Sequence):
             cats = self.coco.loadCats(self.coco.getCatIds())
             nms=[cat['name'] for cat in cats]
             nms.remove("person")
-            
+
             self.person = self.coco.getImgIds(catIds=person)
             background = self.coco.getCatIds(catNms=nms)
             backgrounds = itertools.combinations(background, 3)
@@ -107,7 +107,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         u.extend(self.person[personsIndex])
         backgroundIndex = random.sample(range(self.background.shape[0]), self.samplesPerClass)
         u.extend(self.background[backgroundIndex])
-        
+
         u = self.coco.loadImgs(u)
         r = [None] * len(u)
         threads = [threading.Thread(target=getImg, args=(url["coco_url"],r,u.index(url))) for url in u]
@@ -132,7 +132,7 @@ class DataGenerator(tf.keras.utils.Sequence):
                 for thread in threads:
                     thread.start()
                 while True:
-                    recheck = False 
+                    recheck = False
                     for thread in threads:
                         if thread.isAlive():
                             recheck = True
@@ -144,11 +144,11 @@ class DataGenerator(tf.keras.utils.Sequence):
                 label = np.stack([label, 1 - label], axis=2)
                 self.labels.append(label)
             i = i + 1
-        personWeight = (shape[0] * shape[1] * len(self.images)) / totalPersonPixels
-        self.classWeights = tf.keras.backend.constant(np.array([personWeight, 1 / personWeight]))
+        personWeight = 1 - (totalPersonPixels / (shape[0] * shape[1] * len(self.images)))
+        self.classWeights = tf.keras.backend.constant(np.array([personWeight, 1 - personWeight]))
         self.images = np.stack(self.images, axis=0)
         self.labels = np.stack(self.labels, axis=0)
-         
+
         #final shuffle
         indexes = random.sample(range(self.images.shape[0]), self.images.shape[0])
         self.images = self.images[indexes]
@@ -168,7 +168,7 @@ class DataGenerator(tf.keras.utils.Sequence):
     def __getitem__(self, index):
         s = slice(index * self.len, (index + 1) * self.len)
         return self.images[s], self.labels[s]
-    
+
     def on_epoch_end(self):
         #when we finish an epoch we will shuffle
         indexes = random.sample(range(self.images.shape[0]), self.images.shape[0])
