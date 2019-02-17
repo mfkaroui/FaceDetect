@@ -62,6 +62,8 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.isValidation = isValidation
         person = self.coco.getCatIds(catNms=['person'])
         self.personID = person[0]
+        self.classWeights = tf.keras.backend.variable(np.array([1, 1], dtype="float32"), dtype="float32")
+        self.epochCounter = 0
         if isValidation == False:
             cats = self.coco.loadCats(self.coco.getCatIds())
             nms=[cat['name'] for cat in cats]
@@ -144,8 +146,8 @@ class DataGenerator(tf.keras.utils.Sequence):
                 label = np.stack([label, 1 - label], axis=2)
                 self.labels.append(label)
             i = i + 1
-        personWeight = 1 - (totalPersonPixels / (shape[0] * shape[1] * len(self.images)))
-        self.classWeights = tf.keras.backend.constant(np.array([personWeight, 1 - personWeight]))
+        personWeight = (shape[0] * shape[1] * len(self.images)) / totalPersonPixels
+        tf.keras.backend.set_value(self.classWeights, np.array([personWeight, 1 / personWeight], dtype="float32"))
         self.images = np.stack(self.images, axis=0)
         self.labels = np.stack(self.labels, axis=0)
 
@@ -160,7 +162,8 @@ class DataGenerator(tf.keras.utils.Sequence):
             self.validationGenerator.sampleData()
 
     def fit(self, model, epochs, callbacks=[]):
-        model.fit_generator(generator=self, validation_data=self.validationGenerator, epochs=epochs, callbacks=callbacks)
+        self.epochCounter = 0
+        model.fit_generator(generator=self, validation_data=self.validationGenerator, epochs=epochs, callbacks=callbacks, use_multiprocessing=False, workers=0, shuffle=True)
 
     def __len__(self):
         return self.batchCount
@@ -170,10 +173,14 @@ class DataGenerator(tf.keras.utils.Sequence):
         return self.images[s], self.labels[s]
 
     def on_epoch_end(self):
-        #when we finish an epoch we will shuffle
-        indexes = random.sample(range(self.images.shape[0]), self.images.shape[0])
-        self.images = self.images[indexes]
-        self.labels = self.labels[indexes]
+        self.epochCounter = self.epochCounter + 1
+        if self.epochCounter % 20 == 0:
+            self.sampleData()
+        else:
+            #when we finish an epoch we will shuffle
+            indexes = random.sample(range(self.images.shape[0]), self.images.shape[0])
+            self.images = self.images[indexes]
+            self.labels = self.labels[indexes]
 
     def pixelwise_crossentropy(self):
         def loss(y_true, y_pred):
